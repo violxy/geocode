@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Geocoding service</title>
+    <style>
+      html, body, #map-canvas {
+        height: 90%;
+        margin: 0px;
+        padding: 0px
+      }
+      #panel {
+        position: absolute;
+        top: 5px;
+        left: 50%;
+        margin-left: -180px;
+        z-index: 5;
+        background-color: #fff;
+        padding: 5px;
+        border: 1px solid #999;
+      }
+      .class {
+        position: relative;
+        left: float;
+      }
+      #info {
+        z-index: 10
+      }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&signed_in=true"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+    <script>
+var geocoder;
+var map;
+var overlayObjects = [];
+function initialize() {
+  geocoder = new google.maps.Geocoder();
+   var latlng = new google.maps.LatLng(-34.397, 150.644);
+  var mapOptions = {
+    zoom: 8,
+    center: latlng
+  }
+  map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
+}
+
+function codeAddress() {
+  var address = document.getElementById('address').value;
+  geocoder.geocode( { 'address': address}, function(results, status) {
+    document.getElementById("queriedAddress").innerHTML = "Queried Address = "+ address;
+    if (status == google.maps.GeocoderStatus.OK) {
+      document.getElementById("addressInfo").innerHTML = "Returned Address = " + results[0].formatted_address;
+      document.getElementById("text").innerHTML = "Latlong = " + results[0].geometry.location;
+      document.getElementById("moreInfo").innerHTML = "Bounds = " + results[0].geometry.bounds;
+      var resultHasBounds = false;
+      if (results[0].geometry.bounds) {
+        resultHasBounds = true;
+      }
+
+      var geocodedInfo = {
+        "queryAddress": address,
+        "formattedAddress": results[0].formatted_address,
+        "lat": results[0].geometry.location.lat(),
+        "lng": results[0].geometry.location.lng(),
+        "hasBounds" : resultHasBounds,
+        "NEBoundLat" : results[0].geometry.bounds.getNorthEast().lat(),
+        "NEBoundLng" : results[0].geometry.bounds.getNorthEast().lng(),
+        "SWBoundLat" : results[0].geometry.bounds.getSouthWest().lat(),
+        "SWBoundLng" : results[0].geometry.bounds.getSouthWest().lng(),
+        "foundGeocode" : true
+      }
+      var geocodedInfoString = JSON.stringify(geocodedInfo);
+      // console.log(geocodedInfoString);
+      $.ajax({
+        type: 'POST',
+        contentType: 'application/json',
+        url: 'http://localhost:8000/geocode.php',
+        data: geocodedInfoString,
+        success: function(msg) {
+          console.log(msg);
+        }
+      });
+
+      map.setCenter(results[0].geometry.location);
+      while (overlayObjects[0]) {
+        overlayObjects.pop().setMap(null);
+      }
+      overlayObjects = [];
+      var marker = new google.maps.Marker({
+          map: map,
+          position: results[0].geometry.location
+      });
+      overlayObjects.push(marker);
+
+      var rectangle = new google.maps.Rectangle({
+        map: map,
+        bounds: results[0].geometry.bounds,
+        fillColor: "blue",
+        fillOpacity:0.1
+      });
+      overlayObjects.push(rectangle);
+
+    } else {
+      alert('Geocode was not successful for the following reason: ' + status);
+    }
+  });
+}
+
+google.maps.event.addDomListener(window, 'load', initialize);
+
+    </script>
+
+  </head>
+  <body>
+    <div id="panel">
+      <input id="address" type="textbox" value="Sydney, NSW">
+      <input type="button" value="Geocode" onclick="codeAddress()">
+    </div>
+    <div id = "info">
+      <div class="info" id ="queriedAddress">Queried Address</div>
+      <div class="info" id="addressInfo">Returned Address</div>
+      <div class="info" id="text">Latlong</div>
+      <div class="info" id="moreInfo">Bounds</div>
+    </div>
+    <div id="map-canvas"></div>
+    
+  </body>
+</html>
