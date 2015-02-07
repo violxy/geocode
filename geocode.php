@@ -1,4 +1,5 @@
 <?php
+// Note that this only currently runs on the localhost, with php -S localhost:8000
 $servername = "134.173.43.8";
 $username = "clinic";
 $password = "trickypassword";
